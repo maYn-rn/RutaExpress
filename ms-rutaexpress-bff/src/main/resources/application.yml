@@ -1,0 +1,20 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: ms-rutaexpress-bff
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${AZURE_AD_ISSUER_URI}
+
+app:
+  azure:
+    audience: ${AZURE_AD_AUDIENCE}
+  services:
+    catalog-url: ${CATALOG_SERVICE_URL:http://localhost:8081}
+    shipments-url: ${SHIPMENTS_SERVICE_URL:http://localhost:8082}
+  cors:
+    frontend-origin: ${FRONTEND_ORIGIN:http://localhost:3000}

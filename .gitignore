@@ -1,0 +1,22 @@
+# Cada proyecto tiene su propio .gitignore (Maven / React). Este cubre la
+# raiz y actua como respaldo para lo que nunca debe subirse.
+
+# Variables con credenciales reales (RDS, Azure, etc.)
+.env
+.env.*
+!.env.example
+!.env.aws.example
+
+# Artefactos de build
+target/
+node_modules/
+build/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

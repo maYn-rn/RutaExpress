@@ -1,0 +1,72 @@
+# Entorno LOCAL: MySQL en Docker + los 3 microservicios.
+# Uso: docker compose up --build   (desde la raiz del repo)
+# Para AWS usar docker-compose.aws.yml.
+
+services:
+  mysql:
+    image: mysql:8
+    container_name: rutaexpress-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpass
+      MYSQL_DATABASE: catalog_db
+      MYSQL_USER: catalog_user
+      MYSQL_PASSWORD: catalog_pass
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-prootpass"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  catalog:
+    build: ./ms-rutaexpress-catalog
+    container_name: rutaexpress-catalog
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: catalog_db
+      DB_USER: catalog_user
+      DB_PASSWORD: catalog_pass
+    ports:
+      - "8081:8081"
+
+  shipments:
+    build: ./ms-rutaexpress-shipments
+    container_name: rutaexpress-shipments
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: catalog_db
+      DB_USER: catalog_user
+      DB_PASSWORD: catalog_pass
+    ports:
+      - "8082:8082"
+
+  bff:
+    build: ./ms-rutaexpress-bff
+    container_name: rutaexpress-bff
+    depends_on:
+      - catalog
+      - shipments
+    environment:
+      AZURE_AD_ISSUER_URI: https://login.microsoftonline.com/${AZURE_TENANT_ID:-73167dfd-6b0e-45bd-8f35-cfbfa398d638}/v2.0
+      AZURE_AD_AUDIENCE: ${AZURE_CLIENT_ID:-a6f94bc4-ccff-4caa-bd7e-af0abf92e36b}
+      CATALOG_SERVICE_URL: http://catalog:8081
+      SHIPMENTS_SERVICE_URL: http://shipments:8082
+      FRONTEND_ORIGIN: http://localhost:3000
+      JAVA_TOOL_OPTIONS: -Djava.net.preferIPv4Stack=true
+    ports:
+      - "8080:8080"
+
+volumes:
+  mysql_data:

@@ -1,0 +1,15 @@
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: https://login.microsoftonline.com/73167dfd-6b0e-45bd-8f35-cfbfa398d638/v2.0
+
+app:
+  azure:
+    audience: a6f94bc4-ccff-4caa-bd7e-af0abf92e36b
+  services:
+    catalog-url: http://localhost:8081
+    shipments-url: http://localhost:8082
+  cors:
+    frontend-origin: http://localhost:3000

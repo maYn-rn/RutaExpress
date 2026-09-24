@@ -1,0 +1,302 @@
+.App {
+  text-align: center;
+}
+
+.App-header {
+  background-color: #282c34;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2.5rem 1rem 4rem;
+  color: #f5f5f5;
+}
+
+.App-header h1 {
+  margin: 0 0 1rem;
+}
+
+.auth-secondary-action {
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: #c7cad1;
+}
+
+.link-button {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: inherit;
+  color: #61dafb;
+  text-decoration: underline;
+  border-radius: 0;
+}
+
+.link-button:hover:not(:disabled) {
+  background: none;
+  color: #8fe6ff;
+}
+
+.App-user-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  font-size: 1rem;
+}
+
+.app-tabs {
+  display: flex;
+  gap: 0.5rem;
+  width: 100%;
+  max-width: 900px;
+  margin-bottom: 1.5rem;
+}
+
+.tab {
+  border-radius: 6px 6px 0 0;
+}
+
+.tab.active {
+  background-color: #61dafb;
+  color: #20232a;
+}
+
+.service-list {
+  width: 100%;
+  max-width: 900px;
+  text-align: left;
+  font-size: 1rem;
+}
+
+.service-list h2 {
+  margin-top: 2rem;
+}
+
+/* Formulario de creacion */
+
+.service-form {
+  background-color: #333842;
+  border: 1px solid #4a4f5a;
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+}
+
+.service-form h2 {
+  margin-top: 0;
+  font-size: 1.2rem;
+}
+
+.service-form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 1rem;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.form-field label {
+  font-size: 0.8rem;
+  color: #c7cad1;
+}
+
+.form-field input,
+.form-field select {
+  padding: 0.5rem 0.6rem;
+  border-radius: 4px;
+  border: 1px solid #565c68;
+  background-color: #1f2229;
+  color: #f5f5f5;
+  font-size: 0.95rem;
+}
+
+.form-field input:focus,
+.form-field select:focus {
+  outline: 2px solid #61dafb;
+  outline-offset: 1px;
+}
+
+.service-form button[type='submit'] {
+  margin-top: 1.25rem;
+}
+
+.field-error {
+  color: #ff8a8a;
+  font-size: 0.75rem;
+}
+
+.form-error {
+  color: #ff8a8a;
+  margin: 0.75rem 0 0;
+  font-size: 0.9rem;
+}
+
+/* Tabla de servicios */
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  background-color: #1f2229;
+  font-size: 0.9rem;
+}
+
+thead {
+  background-color: #333842;
+}
+
+th,
+td {
+  border: 1px solid #4a4f5a;
+  padding: 0.55rem 0.75rem;
+  text-align: left;
+  vertical-align: middle;
+}
+
+td input[type='number'] {
+  width: 90px;
+  padding: 0.3rem 0.4rem;
+  border-radius: 4px;
+  border: 1px solid #565c68;
+  background-color: #282c34;
+  color: #f5f5f5;
+}
+
+.service-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.row-error td {
+  color: #ff8a8a;
+  font-size: 0.85rem;
+  background-color: #2a2226;
+}
+
+/* Estado de envios */
+
+.status-badge {
+  display: inline-block;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid #565c68;
+  color: #c7cad1;
+  margin-right: 0.5rem;
+}
+
+.status-creado,
+.status-en_transito {
+  border-color: #61dafb;
+  color: #61dafb;
+}
+
+.status-aceptado {
+  border-color: #ffd166;
+  color: #ffd166;
+}
+
+.status-entregado {
+  border-color: #6ee7a0;
+  color: #6ee7a0;
+}
+
+.status-cancelado {
+  border-color: #ff8a8a;
+  color: #ff8a8a;
+}
+
+td select {
+  padding: 0.3rem 0.4rem;
+  border-radius: 4px;
+  border: 1px solid #565c68;
+  background-color: #282c34;
+  color: #f5f5f5;
+  font-size: 0.85rem;
+}
+
+/* Botones */
+
+button {
+  cursor: pointer;
+  border: 1px solid #61dafb;
+  background-color: transparent;
+  color: #61dafb;
+  border-radius: 4px;
+  padding: 0.45rem 0.9rem;
+  font-size: 0.9rem;
+  transition: background-color 0.15s ease, color 0.15s ease, opacity 0.15s ease;
+}
+
+button:hover:not(:disabled) {
+  background-color: #61dafb;
+  color: #20232a;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  border-color: #565c68;
+  color: #8b909c;
+}
+
+button.danger {
+  border-color: #ff8a8a;
+  color: #ff8a8a;
+}
+
+button.danger:hover:not(:disabled) {
+  background-color: #ff8a8a;
+  color: #20232a;
+}
+
+/* Roles, scopes y claims */
+
+.chip {
+  display: inline-block;
+  padding: 0.15rem 0.55rem;
+  margin-right: 0.3rem;
+  border: 1px solid #61dafb;
+  border-radius: 999px;
+  color: #61dafb;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.chip.muted-chip {
+  border-color: #565c68;
+  color: #c7cad1;
+}
+
+.muted {
+  color: #8b909c;
+  font-size: 0.85rem;
+}
+
+.claims {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.5rem 1.25rem;
+  margin: 0;
+  padding: 1rem 1.25rem;
+  background-color: #333842;
+  border: 1px solid #4a4f5a;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.claims dt {
+  color: #c7cad1;
+}
+
+.claims dd {
+  margin: 0;
+  word-break: break-all;
+}

@@ -1,0 +1,55 @@
+# Despliegue en AWS EC2. La base de datos NO corre aqui: es una instancia
+# Amazon RDS (MySQL) cuyo endpoint se define en .env (ver .env.aws.example).
+#
+# Uso (en la EC2, desde la raiz del repo):
+#   cp .env.aws.example .env   # y completar valores reales
+#   docker compose -f docker-compose.aws.yml up -d --build
+#
+# Solo el BFF (8080) se publica hacia afuera; catalog y shipments quedan en
+# la red interna de Docker y solo el BFF puede llamarlos.
+
+services:
+  catalog:
+    build: ./ms-rutaexpress-catalog
+    container_name: rutaexpress-catalog
+    restart: unless-stopped
+    environment:
+      DB_HOST: ${RDS_HOST}
+      DB_PORT: ${RDS_PORT:-3306}
+      DB_NAME: ${CATALOG_DB_NAME:-catalog_db}
+      DB_USER: ${RDS_USER}
+      DB_PASSWORD: ${RDS_PASSWORD}
+      JAVA_TOOL_OPTIONS: -Xmx256m -Djava.net.preferIPv4Stack=true
+    expose:
+      - "8081"
+
+  shipments:
+    build: ./ms-rutaexpress-shipments
+    container_name: rutaexpress-shipments
+    restart: unless-stopped
+    environment:
+      DB_HOST: ${RDS_HOST}
+      DB_PORT: ${RDS_PORT:-3306}
+      DB_NAME: ${SHIPMENTS_DB_NAME:-shipments_db}
+      DB_USER: ${RDS_USER}
+      DB_PASSWORD: ${RDS_PASSWORD}
+      JAVA_TOOL_OPTIONS: -Xmx256m -Djava.net.preferIPv4Stack=true
+    expose:
+      - "8082"
+
+  bff:
+    build: ./ms-rutaexpress-bff
+    container_name: rutaexpress-bff
+    restart: unless-stopped
+    depends_on:
+      - catalog
+      - shipments
+    environment:
+      AZURE_AD_ISSUER_URI: https://login.microsoftonline.com/${AZURE_TENANT_ID}/v2.0
+      AZURE_AD_AUDIENCE: ${AZURE_CLIENT_ID}
+      CATALOG_SERVICE_URL: http://catalog:8081
+      SHIPMENTS_SERVICE_URL: http://shipments:8082
+      FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:3000}
+      JAVA_TOOL_OPTIONS: -Xmx256m -Djava.net.preferIPv4Stack=true
+    ports:
+      - "8080:8080"
