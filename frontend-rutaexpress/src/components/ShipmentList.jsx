@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { useApiClient } from '../services/apiClient';
 import { resolveErrorMessage } from '../utils/errorHandling';
 import RoleGuard from '../auth/RoleGuard';
-import { DELETE_ROLES, WRITE_ROLES, hasAnyRole } from '../auth/roles';
+import { DELETE_ROLES, SHIPMENT_CREATE_ROLES, WRITE_ROLES, hasAnyRole } from '../auth/roles';
 import { useUserRoles } from '../auth/useUserRoles';
 
 // Espeja cl.duoc.rutaexpress.shipments.entity.ShipmentStatus#ALLOWED_TRANSITIONS
@@ -319,7 +319,7 @@ function ShipmentList() {
 
   return (
     <div className="service-list">
-      <RoleGuard roles={WRITE_ROLES}>
+      <RoleGuard roles={SHIPMENT_CREATE_ROLES}>
         <CreateShipmentForm apiClient={apiClient} onCreated={handleCreated} />
       </RoleGuard>
 

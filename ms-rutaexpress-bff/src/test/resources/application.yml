@@ -3,11 +3,11 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: https://login.microsoftonline.com/73167dfd-6b0e-45bd-8f35-cfbfa398d638/v2.0
+          issuer-uri: https://login.microsoftonline.com/9a929219-a0de-43ee-8628-b1821809e400/v2.0
 
 app:
   azure:
-    audience: a6f94bc4-ccff-4caa-bd7e-af0abf92e36b
+    audience: c00f97ec-90e5-442b-905f-fe9641efd268
   services:
     catalog-url: http://localhost:8081
     shipments-url: http://localhost:8082

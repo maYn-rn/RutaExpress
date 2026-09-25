@@ -18,7 +18,8 @@ import cl.duoc.rutaexpress.bff.service.ShipmentProxyService;
 /**
  * Reenvia peticiones ya autenticadas hacia ms-rutaexpress-shipments.
  * Autorizacion por endpoint (ver AccessRules): lectura requiere el scope
- * del API, crear/modificar requiere rol Admin u Operador y eliminar solo Admin.
+ * del API, crear envios requiere rol Admin, Operador o Cliente, cambiar el
+ * estado requiere Admin u Operador y eliminar solo Admin.
  */
 @RestController
 @RequestMapping("/api/shipments")
@@ -40,7 +41,7 @@ public class ShipmentProxyController {
     }
 
     @PostMapping
-    @PreAuthorize(AccessRules.CAN_WRITE)
+    @PreAuthorize(AccessRules.CAN_CREATE_SHIPMENT)
     public ResponseEntity<String> create(@RequestBody String body) {
         return shipmentProxyService.createShipment(body);
     }

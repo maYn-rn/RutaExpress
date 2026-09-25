@@ -34,7 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Verifica la autorizacion por rol/scope definida en AccessRules:
  * lectura = scope access_as_user, escritura = Admin u Operador,
- * eliminacion = solo Admin. Las authorities se inyectan tal como las
+ * crear envios = Admin, Operador o Cliente, eliminacion = solo Admin. Las authorities se inyectan tal como las
  * produciria SecurityConfig#jwtAuthenticationConverter.
  */
 @SpringBootTest
@@ -146,6 +146,44 @@ class RoleAuthorizationTest {
         mockMvc.perform(get("/api/me"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.status").value(401));
+    }
+
+    @Test
+    void clienteCanCreateShipment() throws Exception {
+        when(shipmentProxyService.createShipment(anyString()))
+                .thenReturn(ResponseEntity.status(201).body("{\"id\":1}"));
+
+        mockMvc.perform(post("/api/shipments")
+                        .with(user(SCOPE, "ROLE_Cliente"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"origen\":\"Santiago\"}"))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
+    void clienteCannotCreateCatalogService() throws Exception {
+        mockMvc.perform(post("/api/catalog/services")
+                        .with(user(SCOPE, "ROLE_Cliente"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isForbidden());
+        verifyNoInteractions(catalogProxyService);
+    }
+
+    @Test
+    void clienteCannotChangeShipmentStatus() throws Exception {
+        mockMvc.perform(put("/api/shipments/1/estado")
+                        .with(user(SCOPE, "ROLE_Cliente"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"estado\":\"ACEPTADO\"}"))
+                .andExpect(status().isForbidden());
+        verifyNoInteractions(shipmentProxyService);
+    }
+
+    @Test
+    void clienteCannotDelete() throws Exception {
+        mockMvc.perform(delete("/api/shipments/1").with(user(SCOPE, "ROLE_Cliente")))
+                .andExpect(status().isForbidden());
     }
 
 }

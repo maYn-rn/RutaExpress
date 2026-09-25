@@ -54,8 +54,8 @@ class ShipmentProxyControllerSecurityTest {
 
         mockMvc.perform(get("/api/shipments")
                         .with(jwt().jwt(jwt -> jwt
-                                .issuer("https://login.microsoftonline.com/73167dfd-6b0e-45bd-8f35-cfbfa398d638/v2.0")
-                                .audience(List.of("api://a6f94bc4-ccff-4caa-bd7e-af0abf92e36b"))
+                                .issuer("https://login.microsoftonline.com/9a929219-a0de-43ee-8628-b1821809e400/v2.0")
+                                .audience(List.of("api://c00f97ec-90e5-442b-905f-fe9641efd268"))
                                 .claim("sub", "user-123"))
                                 .authorities(new SimpleGrantedAuthority("SCOPE_access_as_user"))))
                 .andExpect(status().isOk());

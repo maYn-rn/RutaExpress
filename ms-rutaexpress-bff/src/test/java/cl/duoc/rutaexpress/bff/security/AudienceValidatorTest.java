@@ -11,7 +11,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class AudienceValidatorTest {
 
-    private static final String CLIENT_ID = "a6f94bc4-ccff-4caa-bd7e-af0abf92e36b";
+    private static final String CLIENT_ID = "c00f97ec-90e5-442b-905f-fe9641efd268";
     private static final String API_URI_AUDIENCE = "api://" + CLIENT_ID;
 
     private final AudienceValidator validator = new AudienceValidator(CLIENT_ID);

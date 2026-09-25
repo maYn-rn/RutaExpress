@@ -27,13 +27,14 @@ React (MSAL) ──JWT──▶ AWS API Gateway (JWT authorizer)
 
 ## Seguridad
 
-- **Azure AD App roles**: `Admin` y `Operador`. Scope expuesto: `access_as_user`.
+- **Azure AD App roles**: `Admin`, `Operador` y `Cliente`. Scope expuesto: `access_as_user`.
 - **BFF** (`AccessRules`):
 
   | Operacion | Requisito |
   |---|---|
   | GET (leer) | scope `access_as_user` |
-  | POST / PUT (crear, modificar) | rol `Admin` u `Operador` |
+  | POST envios (solicitar envio) | rol `Admin`, `Operador` o `Cliente` |
+  | POST / PUT catalogo, PUT estado de envio | rol `Admin` u `Operador` |
   | DELETE | rol `Admin` |
 
   Respuestas: `401` token ausente/invalido/expirado o audience incorrecto,

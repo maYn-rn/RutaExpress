@@ -129,4 +129,14 @@ describe('ShipmentList', () => {
     expect(screen.getByRole('combobox')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /eliminar/i })).not.toBeInTheDocument();
   });
+
+  test('Cliente puede crear envios pero no cambiar estado ni eliminar', async () => {
+    useUserRoles.mockReturnValue(['Cliente']);
+    render(<ShipmentList />);
+    await waitFor(() => expect(screen.queryByText(/cargando envios/i)).not.toBeInTheDocument());
+
+    expect(screen.getByRole('button', { name: /crear envio/i })).toBeInTheDocument();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /eliminar/i })).not.toBeInTheDocument();
+  });
 });

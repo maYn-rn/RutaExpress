@@ -11,6 +11,7 @@ public final class AccessRules {
 
     public static final String ROLE_ADMIN = "Admin";
     public static final String ROLE_OPERADOR = "Operador";
+    public static final String ROLE_CLIENTE = "Cliente";
     public static final String API_SCOPE = "access_as_user";
 
     /** Cualquier usuario autenticado cuyo token incluya el scope del API. */
@@ -19,6 +20,10 @@ public final class AccessRules {
     /** Crear y modificar: Admin u Operador. */
     public static final String CAN_WRITE = CAN_READ
             + " and hasAnyRole('" + ROLE_ADMIN + "','" + ROLE_OPERADOR + "')";
+
+    /** Crear envios: ademas de Admin y Operador, el Cliente puede solicitar envios. */
+    public static final String CAN_CREATE_SHIPMENT = CAN_READ
+            + " and hasAnyRole('" + ROLE_ADMIN + "','" + ROLE_OPERADOR + "','" + ROLE_CLIENTE + "')";
 
     /** Eliminar: solo Admin. */
     public static final String CAN_DELETE = CAN_READ + " and hasRole('" + ROLE_ADMIN + "')";

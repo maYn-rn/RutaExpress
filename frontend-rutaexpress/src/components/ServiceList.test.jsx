@@ -87,4 +87,14 @@ describe('ServiceList segun roles del token', () => {
 
     expect(screen.getByRole('button', { name: /eliminar/i })).toBeInTheDocument();
   });
+
+  test('Cliente ve el catalogo en modo lectura', async () => {
+    useUserRoles.mockReturnValue(['Cliente']);
+    render(<ServiceList />);
+    await waitFor(() => expect(screen.queryByText(/cargando servicios/i)).not.toBeInTheDocument());
+
+    expect(screen.queryByText(/nuevo servicio/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /editar/i })).not.toBeInTheDocument();
+    expect(screen.getByText(/solo lectura/i)).toBeInTheDocument();
+  });
 });
