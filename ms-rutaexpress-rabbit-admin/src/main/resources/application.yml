@@ -1,0 +1,15 @@
+server:
+  port: 8084
+
+spring:
+  application:
+    name: ms-rutaexpress-rabbit-admin
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+  jackson:
+    mapper:
+      # Permite enviar "topic" o "TOPIC" como tipo de exchange
+      accept-case-insensitive-enums: true

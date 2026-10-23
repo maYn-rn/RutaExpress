@@ -1,16 +1,18 @@
 # RutaExpress
 
 Sistema de envios con frontend React autenticado con Azure AD (MSAL), un BFF
-en Spring Boot que valida el JWT y tres microservicios desplegados en AWS
-(EC2 + API Gateway + RDS MySQL).
+en Spring Boot que valida el JWT y microservicios desplegados en AWS
+(EC2 + API Gateway + RDS MySQL), con mensajeria asincrona en RabbitMQ.
 
 ```
 React (MSAL) ──JWT──▶ AWS API Gateway (JWT authorizer)
                           │
                           ▼
                      EC2: ms-rutaexpress-bff :8080  (valida issuer, audience, firma, exp y roles)
-                          ├──▶ ms-rutaexpress-catalog   :8081 ──▶ RDS MySQL (catalog_db)
-                          └──▶ ms-rutaexpress-shipments :8082 ──▶ RDS MySQL (shipments_db)
+                          ├──▶ ms-rutaexpress-catalog     :8081 ──▶ RDS MySQL (catalog_db)
+                          ├──▶ ms-rutaexpress-shipments   :8082 ──▶ RDS MySQL (shipments_db)
+                          │         └─ publica eventos ──▶ RabbitMQ ──▶ ms-rutaexpress-notifications
+                          └──▶ ms-rutaexpress-rabbit-admin :8084 ──▶ RabbitMQ (colas, exchanges, bindings)
 ```
 
 ## Estructura
@@ -20,9 +22,11 @@ React (MSAL) ──JWT──▶ AWS API Gateway (JWT authorizer)
 | `frontend-rutaexpress/` | React + `@azure/msal-react`. Login/logout, token en cada llamada, UI segun roles |
 | `ms-rutaexpress-bff/` | Backend-For-Frontend. Resource server OAuth2 + proxy a los microservicios |
 | `ms-rutaexpress-catalog/` | CRUD de servicios de envio (JPA + MySQL) |
-| `ms-rutaexpress-shipments/` | CRUD de envios con maquina de estados (JPA + MySQL) |
-| `docker-compose.yml` | Entorno local (incluye MySQL en Docker) |
-| `docker-compose.aws.yml` | Despliegue en EC2 (usa Amazon RDS, sin MySQL local) |
+| `ms-rutaexpress-shipments/` | CRUD de envios con maquina de estados (JPA + MySQL). **Productor** RabbitMQ |
+| `ms-rutaexpress-notifications/` | **Consumidores** RabbitMQ: notificaciones, tickets y DLQ (ACK manual) |
+| `ms-rutaexpress-rabbit-admin/` | API REST para crear/eliminar colas, exchanges y bindings |
+| `docker-compose.yml` | Entorno local (incluye MySQL y RabbitMQ en Docker) |
+| `docker-compose.aws.yml` | Despliegue en EC2 (usa Amazon RDS; RabbitMQ en la misma EC2) |
 | `.env.aws.example` | Variables necesarias para el despliegue en AWS |
 
 ## Seguridad
@@ -36,6 +40,7 @@ React (MSAL) ──JWT──▶ AWS API Gateway (JWT authorizer)
   | POST envios (solicitar envio) | rol `Admin`, `Operador` o `Cliente` |
   | POST / PUT catalogo, PUT estado de envio | rol `Admin` u `Operador` |
   | DELETE | rol `Admin` |
+  | `/api/admin/rabbit/**` (administrar RabbitMQ) | rol `Admin` |
 
   Respuestas: `401` token ausente/invalido/expirado o audience incorrecto,
   `403` sin rol/scope, `503` si un microservicio no responde. `GET /api/me`
@@ -44,12 +49,61 @@ React (MSAL) ──JWT──▶ AWS API Gateway (JWT authorizer)
 - **Frontend**: lee `roles` y `scp` desde los claims del token (pestana
   "Mi sesion") y oculta las acciones que el usuario no puede realizar.
 
+## Mensajeria (RabbitMQ)
+
+Los nombres de colas, exchanges y routing keys estan centralizados en el
+`application.yml` de cada servicio (`app.messaging.*`) y los beans se declaran
+en una clase de configuracion por servicio (`RabbitProducerConfig`,
+`RabbitMessagingConfig`).
+
+### Rutas de mensajeria
+
+| Productor | Exchange (topic) | Routing key | Cola | Consumidor |
+|---|---|---|---|---|
+| shipments (envio creado) | `rutaexpress.shipments.exchange` | `shipment.created` | `notifications.shipment.queue` y `tickets.shipment.queue` | `ShipmentNotificationListener`, `ShipmentTicketListener` |
+| shipments (cambio de estado) | `rutaexpress.shipments.exchange` | `shipment.status.changed` | `notifications.shipment.queue` | `ShipmentNotificationListener` |
+| (mensaje rechazado) | `rutaexpress.shipments.dlx` (direct) | `notifications.dead` / `tickets.dead` | `notifications.shipment.dlq` / `tickets.shipment.dlq` | `DeadLetterListener` (log) |
+
+La publicacion ocurre despues del commit y un fallo de RabbitMQ solo queda en
+el log: la logica de envios no se ve afectada.
+
+### Confirmacion de mensajes (`acknowledge-mode: manual`)
+
+| Situacion | Accion | Destino |
+|---|---|---|
+| Procesado | `basicAck` | se elimina |
+| JSON invalido o datos faltantes | `basicReject(requeue=false)` | DLQ |
+| Error recuperable con intentos disponibles | reenvio con `x-retry-count + 1` y `basicAck` | misma cola |
+| Error recuperable tras 3 intentos | `basicNack(requeue=false)` | DLQ |
+| Error inesperado | `basicNack(requeue=false)` | DLQ |
+
+**Demo:** crear un envio cuyo cliente contenga `#fallo` provoca 3 reintentos de
+la notificacion y luego su envio a la DLQ (el ticket se genera igual).
+Publicar un texto que no sea JSON desde el panel de RabbitMQ provoca un REJECT
+directo a la DLQ.
+
+### API del administrador (via BFF: `/api/admin/rabbit`, rol Admin)
+
+| Metodo | Ruta | Cuerpo | Respuesta |
+|---|---|---|---|
+| POST | `/queues` | `{"name","durable?","deadLetterExchange?","deadLetterRoutingKey?","messageTtlMs?"}` | 201 / 400 / 409 |
+| GET | `/queues/{name}` | | 200 / 404 |
+| DELETE | `/queues/{name}` | | 204 / 404 |
+| POST | `/exchanges` | `{"name","type":"direct\|topic\|fanout","durable?"}` | 201 / 400 / 409 |
+| DELETE | `/exchanges/{name}` | | 204 |
+| POST | `/bindings` | `{"exchange","queue","routingKey"}` | 201 / 400 / 404 |
+| DELETE | `/bindings` | `{"exchange","queue","routingKey"}` | 204 |
+
+Los nombres solo admiten letras, numeros, `.`, `-` y `_`, y no pueden empezar
+con `amq.` (reservado). Toda la logica esta en `RabbitAdminService`.
+
 ## Ejecutar en local
 
 Requisitos: Docker Desktop y Node.js.
 
 ```powershell
-docker compose up --build          # mysql, catalog, shipments y bff (8080)
+docker compose up --build          # mysql, rabbitmq, 5 microservicios; bff en 8080
+                                   # panel RabbitMQ: http://localhost:15672 (admin / admin123)
 
 cd frontend-rutaexpress
 copy .env.example .env             # completar con los datos de Azure
@@ -59,7 +113,8 @@ npm start                          # http://localhost:3000
 
 ## Desplegar en AWS (Learner Lab)
 
-1. **EC2** Amazon Linux 2023, `t3.small`, security group con 22 y 8080 abiertos, Elastic IP asociada.
+1. **EC2** Amazon Linux 2023, `t3.medium` (o `t3.small` con 2 GB de swap), security group con 22 y 8080
+   abiertos y 15672 (panel de RabbitMQ) solo para "Mi IP", Elastic IP asociada.
 2. **RDS** MySQL 8 `db.t3.micro` con "Connect to an EC2 compute resource" apuntando a la EC2
    (Enhanced monitoring y Performance Insights desactivados).
 3. En la EC2:
@@ -73,7 +128,7 @@ npm start                          # http://localhost:3000
    chmod +x ~/.docker/cli-plugins/*
 
    git clone <URL_DE_ESTE_REPO> rutaexpress && cd rutaexpress
-   cp .env.aws.example .env && nano .env    # endpoint y clave de RDS
+   cp .env.aws.example .env && nano .env    # endpoint y clave de RDS, clave de RabbitMQ
    docker compose -f docker-compose.aws.yml up -d --build
    curl -i http://localhost:8080/api/me     # 401 = BFF arriba y protegido
    ```

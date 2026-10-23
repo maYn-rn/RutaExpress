@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: ms-rutaexpress-notifications
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+    listener:
+      simple:
+        # ACK manual: cada consumidor confirma (ack), rechaza (reject) o
+        # devuelve (nack) explicitamente cada mensaje.
+        acknowledge-mode: manual
+        prefetch: 5
+
+# ============================================================
+#  Infraestructura de mensajeria (nombres centralizados).
+#  RabbitMessagingConfig declara estos recursos al arrancar y
+#  los @RabbitListener leen los nombres de colas desde aqui.
+# ============================================================
+app:
+  messaging:
+    exchange: rutaexpress.shipments.exchange
+    dead-letter-exchange: rutaexpress.shipments.dlx
+    # Reintentos ante errores recuperables antes de enviar a la DLQ
+    max-retries: 3
+    # Si el nombre del cliente contiene este texto, el envio de la
+    # notificacion falla a proposito (para demostrar reintentos + DLQ)
+    simulated-failure-keyword: "#fallo"
+    notifications:
+      queue: notifications.shipment.queue
+      routing-key: "shipment.#"
+      dead-letter-queue: notifications.shipment.dlq
+      dead-letter-routing-key: notifications.dead
+    tickets:
+      queue: tickets.shipment.queue
+      routing-key: shipment.created
+      dead-letter-queue: tickets.shipment.dlq
+      dead-letter-routing-key: tickets.dead

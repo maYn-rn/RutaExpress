@@ -16,3 +16,17 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
+  rabbitmq:
+    host: ${RABBITMQ_HOST:localhost}
+    port: ${RABBITMQ_PORT:5672}
+    username: ${RABBITMQ_USER:guest}
+    password: ${RABBITMQ_PASSWORD:guest}
+
+# Nombres de la mensajeria centralizados: el codigo los lee desde aqui
+# (MessagingProperties), nunca como strings sueltos.
+app:
+  messaging:
+    exchange: rutaexpress.shipments.exchange
+    routing-keys:
+      shipment-created: shipment.created
+      shipment-status-changed: shipment.status.changed

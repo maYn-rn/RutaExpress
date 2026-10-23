@@ -28,6 +28,9 @@ public final class AccessRules {
     /** Eliminar: solo Admin. */
     public static final String CAN_DELETE = CAN_READ + " and hasRole('" + ROLE_ADMIN + "')";
 
+    /** Administrar RabbitMQ (colas, exchanges, bindings): solo Admin. */
+    public static final String CAN_ADMINISTER_MESSAGING = CAN_READ + " and hasRole('" + ROLE_ADMIN + "')";
+
     private AccessRules() {
     }
 

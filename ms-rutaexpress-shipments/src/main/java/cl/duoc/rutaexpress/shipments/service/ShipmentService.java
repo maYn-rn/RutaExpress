@@ -7,6 +7,7 @@ import cl.duoc.rutaexpress.shipments.entity.Shipment;
 import cl.duoc.rutaexpress.shipments.entity.ShipmentStatus;
 import cl.duoc.rutaexpress.shipments.exception.InvalidStatusTransitionException;
 import cl.duoc.rutaexpress.shipments.exception.ResourceNotFoundException;
+import cl.duoc.rutaexpress.shipments.messaging.ShipmentEventPublisher;
 import cl.duoc.rutaexpress.shipments.repository.ShipmentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +20,7 @@ import java.util.stream.Collectors;
 public class ShipmentService {
 
     private final ShipmentRepository shipmentRepository;
+    private final ShipmentEventPublisher shipmentEventPublisher;
 
     @Transactional(readOnly = true)
     public List<ShipmentResponseDTO> findAll() {
@@ -41,7 +43,9 @@ public class ShipmentService {
                 .clienteNombre(request.getClienteNombre())
                 .estado(ShipmentStatus.CREADO)
                 .build();
-        return toResponseDTO(shipmentRepository.save(shipment));
+        Shipment saved = shipmentRepository.save(shipment);
+        shipmentEventPublisher.shipmentCreated(saved);
+        return toResponseDTO(saved);
     }
 
     @Transactional
@@ -54,8 +58,11 @@ public class ShipmentService {
                     "No se puede cambiar el estado de " + shipment.getEstado() + " a " + newStatus);
         }
 
+        ShipmentStatus previousStatus = shipment.getEstado();
         shipment.setEstado(newStatus);
-        return toResponseDTO(shipmentRepository.save(shipment));
+        Shipment saved = shipmentRepository.save(shipment);
+        shipmentEventPublisher.shipmentStatusChanged(saved, previousStatus);
+        return toResponseDTO(saved);
     }
 
     @Transactional

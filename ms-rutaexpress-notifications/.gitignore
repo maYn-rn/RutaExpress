@@ -1,0 +1,29 @@
+# Maven
+target/
+*.class
+
+# Logs
+*.log
+
+# IDE
+.idea/
+*.iml
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+.factorypath
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Entorno / secretos
+.env
+.env.*
+!.env.example
+
+# Temp
+*.swp
+*~

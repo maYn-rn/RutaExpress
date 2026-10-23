@@ -14,6 +14,9 @@ public class WebClientConfig {
     @Value("${app.services.shipments-url}")
     private String shipmentsServiceUrl;
 
+    @Value("${app.services.rabbit-admin-url}")
+    private String rabbitAdminServiceUrl;
+
     @Bean
     public WebClient catalogWebClient(WebClient.Builder builder) {
         return builder.baseUrl(catalogServiceUrl).build();
@@ -22,6 +25,11 @@ public class WebClientConfig {
     @Bean
     public WebClient shipmentsWebClient(WebClient.Builder builder) {
         return builder.baseUrl(shipmentsServiceUrl).build();
+    }
+
+    @Bean
+    public WebClient rabbitAdminWebClient(WebClient.Builder builder) {
+        return builder.baseUrl(rabbitAdminServiceUrl).build();
     }
 
 }
