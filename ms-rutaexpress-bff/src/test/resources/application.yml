@@ -12,5 +12,6 @@ app:
     catalog-url: http://localhost:8081
     shipments-url: http://localhost:8082
     rabbit-admin-url: http://localhost:8084
+    notifications-url: http://localhost:8083
   cors:
     frontend-origin: http://localhost:3000

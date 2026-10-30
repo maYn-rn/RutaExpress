@@ -1,7 +1,8 @@
 package cl.duoc.rutaexpress.notifications.messaging.config;
 
-import org.springframework.amqp.core.Binding;
 import org.springframework.amqp.core.BindingBuilder;
+import org.springframework.amqp.core.Declarable;
+import org.springframework.amqp.core.Declarables;
 import org.springframework.amqp.core.DirectExchange;
 import org.springframework.amqp.core.Queue;
 import org.springframework.amqp.core.QueueBuilder;
@@ -10,26 +11,24 @@ import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
- * Declara toda la infraestructura RabbitMQ que consume este servicio.
+ * Declara toda la topologia RabbitMQ que consume este servicio.
  * Spring la crea en el broker al arrancar si no existe.
  *
- * Rutas de mensajeria:
+ * Exchanges:
+ *   cmd.direct   (direct) comandos punto a punto
+ *   cmd.topic    (topic)  comandos por patron
+ *   cmd.dead.dlx (direct) mensajes rechazados
  *
- * 1) Notificaciones
- *    rutaexpress.shipments.exchange --(shipment.#)--> notifications.shipment.queue
- *    Recibe envio creado y cambios de estado; avisa al cliente.
- *
- * 2) Tickets / guia de despacho
- *    rutaexpress.shipments.exchange --(shipment.created)--> tickets.shipment.queue
- *    Recibe solo envios creados; genera el ticket del envio.
- *
- * 3) Dead Letter (mensajes no entregados)
- *    Cada cola principal tiene x-dead-letter-exchange = rutaexpress.shipments.dlx.
- *    Un mensaje rechazado (reject/nack sin requeue) se reenvia ahi y termina en:
- *      rutaexpress.shipments.dlx --(notifications.dead)--> notifications.shipment.dlq
- *      rutaexpress.shipments.dlx --(tickets.dead)-------> tickets.shipment.dlq
- *    DeadLetterListener los registra en el log.
+ * Por cada flujo (email, warehouse, label):
+ *   cmd.direct --(email.send)--> q.cmd.email
+ *   cmd.topic  --(email.*)-----> q.cmd.email
+ *   q.cmd.email tiene x-dead-letter-exchange = cmd.dead.dlx, asi un mensaje
+ *   rechazado (reject/nack sin requeue) termina en:
+ *   cmd.dead.dlx --(email.dlq)--> q.cmd.email.dlq
  *
  * No se registra un MessageConverter JSON a proposito: los consumidores
  * reciben el Message crudo y AcknowledgingMessageHandler deserializa el
@@ -40,78 +39,40 @@ import org.springframework.context.annotation.Configuration;
 @EnableConfigurationProperties(MessagingProperties.class)
 public class RabbitMessagingConfig {
 
-    // ---------- Exchanges ----------
-
-    /** Exchange donde ms-rutaexpress-shipments publica los eventos. */
     @Bean
-    public TopicExchange shipmentsExchange(MessagingProperties properties) {
-        return new TopicExchange(properties.exchange(), true, false);
+    public DirectExchange commandDirectExchange(MessagingProperties properties) {
+        return new DirectExchange(properties.exchanges().direct(), true, false);
     }
 
-    /** Exchange que recibe los mensajes rechazados de las colas principales. */
+    @Bean
+    public TopicExchange commandTopicExchange(MessagingProperties properties) {
+        return new TopicExchange(properties.exchanges().topic(), true, false);
+    }
+
     @Bean
     public DirectExchange deadLetterExchange(MessagingProperties properties) {
-        return new DirectExchange(properties.deadLetterExchange(), true, false);
+        return new DirectExchange(properties.exchanges().deadLetter(), true, false);
     }
 
-    // ---------- Ruta 1: notificaciones ----------
-
+    /** Las 6 colas (3 principales + 3 DLQ) y sus bindings. */
     @Bean
-    public Queue notificationsQueue(MessagingProperties properties) {
-        return mainQueue(properties, properties.notifications());
-    }
+    public Declarables commandQueues(MessagingProperties properties, DirectExchange commandDirectExchange,
+                                     TopicExchange commandTopicExchange, DirectExchange deadLetterExchange) {
+        List<Declarable> declarables = new ArrayList<>();
+        for (MessagingProperties.Route route : properties.routes()) {
+            Queue main = QueueBuilder.durable(route.queue())
+                    .deadLetterExchange(properties.exchanges().deadLetter())
+                    .deadLetterRoutingKey(route.deadLetterKey())
+                    .build();
+            Queue dlq = QueueBuilder.durable(route.deadLetterQueue()).build();
 
-    @Bean
-    public Queue notificationsDeadLetterQueue(MessagingProperties properties) {
-        return QueueBuilder.durable(properties.notifications().deadLetterQueue()).build();
-    }
-
-    @Bean
-    public Binding notificationsBinding(Queue notificationsQueue, TopicExchange shipmentsExchange,
-                                        MessagingProperties properties) {
-        return BindingBuilder.bind(notificationsQueue).to(shipmentsExchange)
-                .with(properties.notifications().routingKey());
-    }
-
-    @Bean
-    public Binding notificationsDeadLetterBinding(Queue notificationsDeadLetterQueue, DirectExchange deadLetterExchange,
-                                                  MessagingProperties properties) {
-        return BindingBuilder.bind(notificationsDeadLetterQueue).to(deadLetterExchange)
-                .with(properties.notifications().deadLetterRoutingKey());
-    }
-
-    // ---------- Ruta 2: tickets ----------
-
-    @Bean
-    public Queue ticketsQueue(MessagingProperties properties) {
-        return mainQueue(properties, properties.tickets());
-    }
-
-    @Bean
-    public Queue ticketsDeadLetterQueue(MessagingProperties properties) {
-        return QueueBuilder.durable(properties.tickets().deadLetterQueue()).build();
-    }
-
-    @Bean
-    public Binding ticketsBinding(Queue ticketsQueue, TopicExchange shipmentsExchange,
-                                  MessagingProperties properties) {
-        return BindingBuilder.bind(ticketsQueue).to(shipmentsExchange)
-                .with(properties.tickets().routingKey());
-    }
-
-    @Bean
-    public Binding ticketsDeadLetterBinding(Queue ticketsDeadLetterQueue, DirectExchange deadLetterExchange,
-                                            MessagingProperties properties) {
-        return BindingBuilder.bind(ticketsDeadLetterQueue).to(deadLetterExchange)
-                .with(properties.tickets().deadLetterRoutingKey());
-    }
-
-    /** Cola principal durable que deriva sus mensajes rechazados a la DLX. */
-    private Queue mainQueue(MessagingProperties properties, MessagingProperties.Route route) {
-        return QueueBuilder.durable(route.queue())
-                .deadLetterExchange(properties.deadLetterExchange())
-                .deadLetterRoutingKey(route.deadLetterRoutingKey())
-                .build();
+            declarables.add(main);
+            declarables.add(dlq);
+            declarables.add(BindingBuilder.bind(main).to(commandDirectExchange).with(route.directKey()));
+            declarables.add(BindingBuilder.bind(main).to(commandTopicExchange).with(route.topicPattern()));
+            declarables.add(BindingBuilder.bind(dlq).to(deadLetterExchange).with(route.deadLetterKey()));
+        }
+        return new Declarables(declarables);
     }
 
 }

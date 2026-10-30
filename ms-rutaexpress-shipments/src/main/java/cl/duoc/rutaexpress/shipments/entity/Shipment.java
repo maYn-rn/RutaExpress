@@ -45,6 +45,14 @@ public class Shipment {
     @Column(name = "cliente_nombre", nullable = false)
     private String clienteNombre;
 
+    /**
+     * Identifica al cliente: a este correo se le notifican los cambios de
+     * estado y es el que filtra "mis envios" para el rol Cliente. Nullable en
+     * la base para no romper los envios creados antes de agregar la columna.
+     */
+    @Column(name = "cliente_email")
+    private String clienteEmail;
+
     @CreationTimestamp
     @Column(name = "fecha_creacion", nullable = false, updatable = false)
     private LocalDateTime fechaCreacion;

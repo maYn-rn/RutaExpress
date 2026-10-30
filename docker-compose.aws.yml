@@ -72,10 +72,17 @@ services:
       rabbitmq:
         condition: service_healthy
     environment:
+      DB_HOST: ${RDS_HOST}
+      DB_PORT: ${RDS_PORT:-3306}
+      DB_NAME: ${NOTIFICATIONS_DB_NAME:-notifications_db}
+      DB_USER: ${RDS_USER}
+      DB_PASSWORD: ${RDS_PASSWORD}
       RABBITMQ_HOST: rabbitmq
       RABBITMQ_USER: ${RABBITMQ_USER}
       RABBITMQ_PASSWORD: ${RABBITMQ_PASSWORD}
-      JAVA_TOOL_OPTIONS: -Xmx192m
+      JAVA_TOOL_OPTIONS: -Xmx256m -Djava.net.preferIPv4Stack=true
+    expose:
+      - "8083"
 
   rabbit-admin:
     build: ./ms-rutaexpress-rabbit-admin
@@ -99,12 +106,14 @@ services:
     depends_on:
       - catalog
       - shipments
+      - notifications
       - rabbit-admin
     environment:
       AZURE_AD_ISSUER_URI: https://login.microsoftonline.com/${AZURE_TENANT_ID}/v2.0
       AZURE_AD_AUDIENCE: ${AZURE_CLIENT_ID}
       CATALOG_SERVICE_URL: http://catalog:8081
       SHIPMENTS_SERVICE_URL: http://shipments:8082
+      NOTIFICATIONS_SERVICE_URL: http://notifications:8083
       RABBIT_ADMIN_SERVICE_URL: http://rabbit-admin:8084
       FRONTEND_ORIGIN: ${FRONTEND_ORIGIN:-http://localhost:3000}
       JAVA_TOOL_OPTIONS: -Xmx256m -Djava.net.preferIPv4Stack=true

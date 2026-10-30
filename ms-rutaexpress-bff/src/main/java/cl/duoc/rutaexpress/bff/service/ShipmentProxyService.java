@@ -21,6 +21,11 @@ public class ShipmentProxyService {
         return forward(HttpMethod.GET, SHIPMENTS_PATH, null);
     }
 
+    public ResponseEntity<String> getShipmentsByCustomer(String clienteEmail) {
+        // El email va como variable de la plantilla para que WebClient lo codifique.
+        return forward(HttpMethod.GET, SHIPMENTS_PATH + "?clienteEmail={email}", null, clienteEmail);
+    }
+
     public ResponseEntity<String> getShipmentById(Long id) {
         return forward(HttpMethod.GET, SHIPMENTS_PATH + "/" + id, null);
     }
@@ -37,8 +42,8 @@ public class ShipmentProxyService {
         return forward(HttpMethod.DELETE, SHIPMENTS_PATH + "/" + id, null);
     }
 
-    private ResponseEntity<String> forward(HttpMethod method, String uri, String body) {
-        WebClient.RequestBodySpec requestSpec = shipmentsWebClient.method(method).uri(uri);
+    private ResponseEntity<String> forward(HttpMethod method, String uri, String body, Object... uriVariables) {
+        WebClient.RequestBodySpec requestSpec = shipmentsWebClient.method(method).uri(uri, uriVariables);
         WebClient.RequestHeadersSpec<?> headersSpec = (body != null)
                 ? requestSpec.contentType(MediaType.APPLICATION_JSON).bodyValue(body)
                 : requestSpec;

@@ -58,6 +58,7 @@ class RoleAuthorizationTest {
     private static JwtRequestPostProcessor user(String... authorities) {
         return jwt()
                 .jwt(jwt -> jwt.claim("sub", "user-123")
+                        .claim("preferred_username", "ana@rutaexpress.cl")
                         .claim("scp", "access_as_user")
                         .claim("roles", Arrays.stream(authorities)
                                 .filter(a -> a.startsWith("ROLE_"))
@@ -77,7 +78,8 @@ class RoleAuthorizationTest {
 
     @Test
     void readWithApiScopeAndNoRoleIsAllowed() throws Exception {
-        when(shipmentProxyService.getAllShipments()).thenReturn(ResponseEntity.ok("[]"));
+        // Sin rol puede leer, pero solo sus propios envios (ver CustomerScopeAuthorizationTest).
+        when(shipmentProxyService.getShipmentsByCustomer("ana@rutaexpress.cl")).thenReturn(ResponseEntity.ok("[]"));
 
         mockMvc.perform(get("/api/shipments").with(user(SCOPE)))
                 .andExpect(status().isOk());

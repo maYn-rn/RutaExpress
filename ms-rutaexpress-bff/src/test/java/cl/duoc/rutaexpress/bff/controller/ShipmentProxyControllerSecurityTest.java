@@ -49,14 +49,15 @@ class ShipmentProxyControllerSecurityTest {
 
     @Test
     void shouldAllowAccessWithValidJwt() throws Exception {
-        when(shipmentProxyService.getAllShipments())
+        when(shipmentProxyService.getShipmentsByCustomer("user@rutaexpress.cl"))
                 .thenReturn(ResponseEntity.ok("[]"));
 
         mockMvc.perform(get("/api/shipments")
                         .with(jwt().jwt(jwt -> jwt
                                 .issuer("https://login.microsoftonline.com/9a929219-a0de-43ee-8628-b1821809e400/v2.0")
                                 .audience(List.of("api://c00f97ec-90e5-442b-905f-fe9641efd268"))
-                                .claim("sub", "user-123"))
+                                .claim("sub", "user-123")
+                                .claim("preferred_username", "user@rutaexpress.cl"))
                                 .authorities(new SimpleGrantedAuthority("SCOPE_access_as_user"))))
                 .andExpect(status().isOk());
     }

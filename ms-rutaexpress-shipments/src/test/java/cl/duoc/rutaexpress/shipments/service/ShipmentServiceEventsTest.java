@@ -8,10 +8,12 @@ import cl.duoc.rutaexpress.shipments.exception.InvalidStatusTransitionException;
 import cl.duoc.rutaexpress.shipments.messaging.ShipmentEventPublisher;
 import cl.duoc.rutaexpress.shipments.repository.ShipmentRepository;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.math.BigDecimal;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
@@ -40,7 +42,7 @@ class ShipmentServiceEventsTest {
         Shipment saved = shipment(ShipmentStatus.CREADO);
         when(repository.save(any(Shipment.class))).thenReturn(saved);
 
-        service.create(new ShipmentRequestDTO("Santiago", "Valparaiso", new BigDecimal("10"), "Ana"));
+        service.create(new ShipmentRequestDTO("Santiago", "Valparaiso", new BigDecimal("10"), "Ana", "ana@rutaexpress.cl"));
 
         verify(publisher).shipmentCreated(saved);
     }
@@ -53,7 +55,38 @@ class ShipmentServiceEventsTest {
 
         service.updateStatus(1L, new ShipmentStatusUpdateDTO("ACEPTADO"));
 
-        verify(publisher).shipmentStatusChanged(existing, ShipmentStatus.CREADO);
+        verify(publisher).shipmentStatusChanged(existing, ShipmentStatus.CREADO, null);
+    }
+
+    @Test
+    void failedDeliveryForwardsReasonToPublisher() {
+        Shipment existing = shipment(ShipmentStatus.EN_TRANSITO);
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+        when(repository.save(existing)).thenReturn(existing);
+
+        service.updateStatus(1L, new ShipmentStatusUpdateDTO("FALLIDO", "Destinatario ausente"));
+
+        verify(publisher).shipmentStatusChanged(existing, ShipmentStatus.EN_TRANSITO, "Destinatario ausente");
+    }
+
+    @Test
+    void createStoresNormalizedEmail() {
+        when(repository.save(any(Shipment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.create(new ShipmentRequestDTO("Santiago", "Valparaiso", new BigDecimal("10"), "Ana", " Ana@RutaExpress.cl "));
+
+        ArgumentCaptor<Shipment> saved = ArgumentCaptor.forClass(Shipment.class);
+        verify(repository).save(saved.capture());
+        assertThat(saved.getValue().getClienteEmail()).isEqualTo("ana@rutaexpress.cl");
+    }
+
+    @Test
+    void findAllFiltersByCustomerEmailWhenGiven() {
+        service.findAll("ana@rutaexpress.cl");
+        service.findAll(null);
+
+        verify(repository).findByClienteEmailIgnoreCase("ana@rutaexpress.cl");
+        verify(repository).findAll();
     }
 
     @Test

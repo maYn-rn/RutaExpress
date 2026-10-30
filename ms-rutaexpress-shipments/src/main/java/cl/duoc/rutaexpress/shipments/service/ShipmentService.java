@@ -12,6 +12,7 @@ import cl.duoc.rutaexpress.shipments.repository.ShipmentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.ZoneId;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -22,9 +23,13 @@ public class ShipmentService {
     private final ShipmentRepository shipmentRepository;
     private final ShipmentEventPublisher shipmentEventPublisher;
 
+    /** Sin email devuelve todos; con email, solo los envios de ese cliente. */
     @Transactional(readOnly = true)
-    public List<ShipmentResponseDTO> findAll() {
-        return shipmentRepository.findAll().stream()
+    public List<ShipmentResponseDTO> findAll(String clienteEmail) {
+        List<Shipment> shipments = (clienteEmail == null || clienteEmail.isBlank())
+                ? shipmentRepository.findAll()
+                : shipmentRepository.findByClienteEmailIgnoreCase(clienteEmail.trim());
+        return shipments.stream()
                 .map(this::toResponseDTO)
                 .collect(Collectors.toList());
     }
@@ -41,6 +46,7 @@ public class ShipmentService {
                 .destino(request.getDestino())
                 .pesoKg(request.getPesoKg())
                 .clienteNombre(request.getClienteNombre())
+                .clienteEmail(request.getClienteEmail().trim().toLowerCase())
                 .estado(ShipmentStatus.CREADO)
                 .build();
         Shipment saved = shipmentRepository.save(shipment);
@@ -61,7 +67,7 @@ public class ShipmentService {
         ShipmentStatus previousStatus = shipment.getEstado();
         shipment.setEstado(newStatus);
         Shipment saved = shipmentRepository.save(shipment);
-        shipmentEventPublisher.shipmentStatusChanged(saved, previousStatus);
+        shipmentEventPublisher.shipmentStatusChanged(saved, previousStatus, request.getMotivo());
         return toResponseDTO(saved);
     }
 
@@ -92,7 +98,11 @@ public class ShipmentService {
                 .pesoKg(shipment.getPesoKg())
                 .estado(shipment.getEstado())
                 .clienteNombre(shipment.getClienteNombre())
-                .fechaCreacion(shipment.getFechaCreacion())
+                .clienteEmail(shipment.getClienteEmail())
+                // Hibernate guarda la fecha en la zona de la JVM; se convierte a instante absoluto.
+                .fechaCreacion(shipment.getFechaCreacion() != null
+                        ? shipment.getFechaCreacion().atZone(ZoneId.systemDefault()).toInstant()
+                        : null)
                 .build();
     }
 

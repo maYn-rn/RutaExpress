@@ -11,6 +11,6 @@ public interface ShipmentEventPublisher {
 
     void shipmentCreated(Shipment shipment);
 
-    void shipmentStatusChanged(Shipment shipment, ShipmentStatus previousStatus);
+    void shipmentStatusChanged(Shipment shipment, ShipmentStatus previousStatus, String motivo);
 
 }

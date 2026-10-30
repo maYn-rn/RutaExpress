@@ -15,7 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -47,16 +47,26 @@ class ShipmentControllerTest {
                 .pesoKg(new BigDecimal("12.50"))
                 .estado(ShipmentStatus.CREADO)
                 .clienteNombre("Juan Perez")
-                .fechaCreacion(LocalDateTime.now())
+                .fechaCreacion(Instant.parse("2026-10-30T18:05:29Z"))
                 .build();
 
-        when(shipmentService.findAll()).thenReturn(List.of(shipment));
+        when(shipmentService.findAll(null)).thenReturn(List.of(shipment));
 
         mockMvc.perform(get("/api/shipments"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(1L))
                 .andExpect(jsonPath("$[0].origen").value("Santiago"))
-                .andExpect(jsonPath("$[0].estado").value("CREADO"));
+                .andExpect(jsonPath("$[0].estado").value("CREADO"))
+                .andExpect(jsonPath("$[0].fechaCreacion").value("2026-10-30T18:05:29Z"));
+    }
+
+    @Test
+    void shouldPassCustomerEmailFilterToService() throws Exception {
+        when(shipmentService.findAll("ana@rutaexpress.cl")).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/shipments").param("clienteEmail", "ana@rutaexpress.cl"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").isEmpty());
     }
 
     @Test

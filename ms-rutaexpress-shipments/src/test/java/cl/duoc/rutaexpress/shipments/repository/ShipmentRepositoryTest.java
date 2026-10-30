@@ -40,4 +40,20 @@ class ShipmentRepositoryTest {
         assertThat(found.get().getFechaCreacion()).isNotNull();
     }
 
+    @Test
+    void shouldFindShipmentsByCustomerEmailIgnoringCase() {
+        shipmentRepository.save(Shipment.builder()
+                .origen("Santiago").destino("Temuco").pesoKg(BigDecimal.ONE)
+                .estado(ShipmentStatus.CREADO).clienteNombre("Ana").clienteEmail("ana@rutaexpress.cl")
+                .build());
+        shipmentRepository.save(Shipment.builder()
+                .origen("Santiago").destino("Arica").pesoKg(BigDecimal.ONE)
+                .estado(ShipmentStatus.CREADO).clienteNombre("Luis").clienteEmail("luis@rutaexpress.cl")
+                .build());
+
+        assertThat(shipmentRepository.findByClienteEmailIgnoreCase("ANA@rutaexpress.cl"))
+                .extracting(Shipment::getDestino)
+                .containsExactly("Temuco");
+    }
+
 }

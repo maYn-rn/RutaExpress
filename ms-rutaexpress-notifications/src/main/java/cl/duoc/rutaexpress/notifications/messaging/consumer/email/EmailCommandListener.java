@@ -1,4 +1,4 @@
-package cl.duoc.rutaexpress.notifications.messaging.consumer.notification;
+package cl.duoc.rutaexpress.notifications.messaging.consumer.email;
 
 import cl.duoc.rutaexpress.notifications.messaging.support.AcknowledgingMessageHandler;
 import cl.duoc.rutaexpress.notifications.notification.NotificationService;
@@ -9,20 +9,22 @@ import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
 /**
- * CONSUMIDOR del dominio "notificaciones": escucha envios creados y cambios de
- * estado (routing key shipment.#) y delega en NotificationService.
+ * CONSUMIDOR de q.cmd.email: envio registrado (email.send) y cambios de
+ * estado (email.<estado> via email.*). Delega en NotificationService.
  * La confirmacion (ACK/NACK/DLQ) la resuelve AcknowledgingMessageHandler.
  */
 @Component
 @RequiredArgsConstructor
-public class ShipmentNotificationListener {
+public class EmailCommandListener {
+
+    public static final String CONSUMER = "EMAIL";
 
     private final AcknowledgingMessageHandler handler;
     private final NotificationService notificationService;
 
-    @RabbitListener(queues = "${app.messaging.notifications.queue}")
-    public void onShipmentEvent(Message message, Channel channel) {
-        handler.handle(message, channel, "NOTIFICACIONES", notificationService::notifyCustomer);
+    @RabbitListener(queues = "${app.messaging.email.queue}")
+    public void onEmailCommand(Message message, Channel channel) {
+        handler.handle(message, channel, CONSUMER, notificationService::notifyCustomer);
     }
 
 }

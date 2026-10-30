@@ -1,6 +1,20 @@
+server:
+  port: 8083
+
 spring:
   application:
     name: ms-rutaexpress-notifications
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:notifications_db}?createDatabaseIfNotExist=true&serverTimezone=UTC
+    username: ${DB_USER:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
   rabbitmq:
     host: ${RABBITMQ_HOST:localhost}
     port: ${RABBITMQ_PORT:5672}
@@ -14,26 +28,42 @@ spring:
         prefetch: 5
 
 # ============================================================
-#  Infraestructura de mensajeria (nombres centralizados).
+#  Topologia RabbitMQ (6 colas: 3 flujos + 3 DLQ).
 #  RabbitMessagingConfig declara estos recursos al arrancar y
 #  los @RabbitListener leen los nombres de colas desde aqui.
+#
+#  | Cola principal  | DLQ                 | Binding direct   | Binding topic |
+#  |-----------------|---------------------|------------------|---------------|
+#  | q.cmd.email     | q.cmd.email.dlq     | email.send       | email.*       |
+#  | q.cmd.warehouse | q.cmd.warehouse.dlq | warehouse.ticket | warehouse.#   |
+#  | q.cmd.label     | q.cmd.label.dlq     | label.gen        | label.*       |
 # ============================================================
 app:
   messaging:
-    exchange: rutaexpress.shipments.exchange
-    dead-letter-exchange: rutaexpress.shipments.dlx
+    exchanges:
+      direct: cmd.direct
+      topic: cmd.topic
+      dead-letter: cmd.dead.dlx
     # Reintentos ante errores recuperables antes de enviar a la DLQ
     max-retries: 3
-    # Si el nombre del cliente contiene este texto, el envio de la
-    # notificacion falla a proposito (para demostrar reintentos + DLQ)
+    # Si el nombre del cliente contiene este texto, el envio del email
+    # falla a proposito (para demostrar reintentos + DLQ + notificacion FALLIDA)
     simulated-failure-keyword: "#fallo"
-    notifications:
-      queue: notifications.shipment.queue
-      routing-key: "shipment.#"
-      dead-letter-queue: notifications.shipment.dlq
-      dead-letter-routing-key: notifications.dead
-    tickets:
-      queue: tickets.shipment.queue
-      routing-key: shipment.created
-      dead-letter-queue: tickets.shipment.dlq
-      dead-letter-routing-key: tickets.dead
+    email:
+      queue: q.cmd.email
+      direct-key: email.send
+      topic-pattern: "email.*"
+      dead-letter-queue: q.cmd.email.dlq
+      dead-letter-key: email.dlq
+    warehouse:
+      queue: q.cmd.warehouse
+      direct-key: warehouse.ticket
+      topic-pattern: "warehouse.#"
+      dead-letter-queue: q.cmd.warehouse.dlq
+      dead-letter-key: warehouse.dlq
+    label:
+      queue: q.cmd.label
+      direct-key: label.gen
+      topic-pattern: "label.*"
+      dead-letter-queue: q.cmd.label.dlq
+      dead-letter-key: label.dlq

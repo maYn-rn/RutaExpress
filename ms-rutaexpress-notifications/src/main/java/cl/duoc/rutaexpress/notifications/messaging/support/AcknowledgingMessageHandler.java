@@ -1,7 +1,9 @@
 package cl.duoc.rutaexpress.notifications.messaging.support;
 
 import cl.duoc.rutaexpress.notifications.messaging.config.MessagingProperties;
-import cl.duoc.rutaexpress.notifications.messaging.event.ShipmentEvent;
+import cl.duoc.rutaexpress.notifications.messaging.event.EventEnvelope;
+import cl.duoc.rutaexpress.notifications.messaging.idempotency.ProcessedMessage;
+import cl.duoc.rutaexpress.notifications.messaging.idempotency.ProcessedMessageRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.rabbitmq.client.Channel;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +26,7 @@ import java.util.function.Consumer;
  * | Resultado                              | Accion                       | Destino              |
  * |----------------------------------------|------------------------------|----------------------|
  * | Procesado correctamente                | basicAck                     | se elimina de la cola|
+ * | Duplicado (eventId ya procesado)       | basicAck sin procesar        | se elimina de la cola|
  * | Mensaje invalido (JSON, datos)         | basicReject(requeue=false)   | DLQ, sin reintentos  |
  * | Error recuperable, quedan intentos     | reenvio con x-retry-count+1  | misma cola (reintento)|
  * |                                        | y basicAck del original      |                      |
@@ -33,6 +36,10 @@ import java.util.function.Consumer;
  * Nunca se usa requeue=true sobre el mismo mensaje: evitaria la DLQ y podria
  * generar un ciclo infinito de reprocesos. Los reintentos se cuentan en el
  * header x-retry-count.
+ *
+ * Idempotencia: cada consumidor registra los eventId que proceso con exito
+ * (tabla processed_messages). Si RabbitMQ reentrega un mensaje ya procesado,
+ * se confirma sin volver a ejecutar la logica (no se envia dos veces el email).
  */
 @Slf4j
 @Component
@@ -40,18 +47,29 @@ import java.util.function.Consumer;
 public class AcknowledgingMessageHandler {
 
     public static final String RETRY_COUNT_HEADER = "x-retry-count";
+    /** Ultimo error recuperable; la DLQ lo usa para explicar por que fallo. */
+    public static final String LAST_ERROR_HEADER = "x-last-error";
 
     private final ObjectMapper objectMapper;
     private final RabbitTemplate rabbitTemplate;
     private final MessagingProperties properties;
+    private final ProcessedMessageRepository processedMessages;
 
-    public void handle(Message message, Channel channel, String consumerName, Consumer<ShipmentEvent> processor) {
+    public void handle(Message message, Channel channel, String consumerName, Consumer<EventEnvelope> processor) {
         long deliveryTag = message.getMessageProperties().getDeliveryTag();
         try {
-            ShipmentEvent event = parse(message);
-            processor.accept(event);
+            EventEnvelope envelope = parse(message);
+            if (processedMessages.existsById(ProcessedMessage.key(consumerName, envelope.eventId()))) {
+                channel.basicAck(deliveryTag, false);
+                log.info("[{}] Duplicado ignorado, ACK eventId={}", consumerName, envelope.eventId());
+                return;
+            }
+
+            processor.accept(envelope);
+            processedMessages.save(ProcessedMessage.of(consumerName, envelope.eventId()));
             channel.basicAck(deliveryTag, false);
-            log.info("[{}] ACK envio id={} ({})", consumerName, event.shipmentId(), event.eventType());
+            log.info("[{}] ACK envio id={} ({}) eventId={} traceId={}", consumerName,
+                    envelope.data().shipmentId(), envelope.type(), envelope.eventId(), envelope.traceId());
 
         } catch (InvalidMessageException ex) {
             log.warn("[{}] Mensaje invalido, REJECT -> DLQ: {}", consumerName, ex.getMessage());
@@ -79,17 +97,18 @@ public class AcknowledgingMessageHandler {
         }
     }
 
-    private ShipmentEvent parse(Message message) {
-        ShipmentEvent event;
+    private EventEnvelope parse(Message message) {
+        EventEnvelope envelope;
         try {
-            event = objectMapper.readValue(message.getBody(), ShipmentEvent.class);
+            envelope = objectMapper.readValue(message.getBody(), EventEnvelope.class);
         } catch (IOException ex) {
             throw new InvalidMessageException("JSON no valido: " + ex.getMessage(), ex);
         }
-        if (event == null || event.eventType() == null || event.shipmentId() == null) {
-            throw new InvalidMessageException("Faltan campos obligatorios (eventType, shipmentId)");
+        if (envelope == null || envelope.type() == null || envelope.eventId() == null
+                || envelope.data() == null || envelope.data().shipmentId() == null) {
+            throw new InvalidMessageException("Faltan campos obligatorios (type, eventId, data.shipmentId)");
         }
-        return event;
+        return envelope;
     }
 
     /**
@@ -104,6 +123,7 @@ public class AcknowledgingMessageHandler {
             Message copy = MessageBuilder.withBody(message.getBody())
                     .copyProperties(original)
                     .setHeader(RETRY_COUNT_HEADER, nextAttempt)
+                    .setHeader(LAST_ERROR_HEADER, cause.getMessage())
                     .build();
             rabbitTemplate.send("", original.getConsumerQueue(), copy);
             channel.basicAck(deliveryTag, false);

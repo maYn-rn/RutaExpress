@@ -1,25 +1,20 @@
 package cl.duoc.rutaexpress.shipments.messaging.event;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 /**
- * Mensaje que viaja por RabbitMQ. El contrato con los consumidores es este
- * JSON, no la clase Java: ms-rutaexpress-notifications tiene su propia copia.
+ * Datos del envio que viajan dentro del EventEnvelope (campo "data").
+ * estadoAnterior y motivo son null cuando el envio recien se crea.
  */
 public record ShipmentEvent(
-        String eventType,
         Long shipmentId,
         String origen,
         String destino,
         BigDecimal pesoKg,
         String clienteNombre,
+        String clienteEmail,
         String estadoAnterior,
         String estado,
-        LocalDateTime occurredAt
+        String motivo
 ) {
-
-    public static final String SHIPMENT_CREATED = "SHIPMENT_CREATED";
-    public static final String SHIPMENT_STATUS_CHANGED = "SHIPMENT_STATUS_CHANGED";
-
 }

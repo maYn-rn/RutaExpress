@@ -139,4 +139,85 @@ describe('ShipmentList', () => {
     expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /eliminar/i })).not.toBeInTheDocument();
   });
+
+  test('desde EN_TRANSITO se puede marcar FALLIDO y el motivo viaja en el PUT', async () => {
+    apiClientMock.get.mockResolvedValue({ data: [{ ...sampleShipment, estado: 'EN_TRANSITO' }] });
+    apiClientMock.put.mockResolvedValue({ data: { ...sampleShipment, estado: 'FALLIDO' } });
+    window.prompt = jest.fn().mockReturnValue('Destinatario ausente');
+
+    render(<ShipmentList />);
+    await waitFor(() => expect(screen.queryByText(/cargando envios/i)).not.toBeInTheDocument());
+
+    const options = within(screen.getByRole('combobox'))
+      .getAllByRole('option')
+      .map((option) => option.textContent);
+    expect(options).toEqual(['Cambiar estado...', 'ENTREGADO', 'FALLIDO', 'CANCELADO']);
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'FALLIDO' } });
+
+    await waitFor(() => {
+      expect(apiClientMock.put).toHaveBeenCalledWith('/api/shipments/1/estado', {
+        estado: 'FALLIDO',
+        motivo: 'Destinatario ausente',
+      });
+    });
+  });
+
+  test('cancelar el prompt del motivo no cambia el estado', async () => {
+    window.prompt = jest.fn().mockReturnValue(null);
+
+    render(<ShipmentList />);
+    await waitFor(() => expect(screen.queryByText(/cargando envios/i)).not.toBeInTheDocument());
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'CANCELADO' } });
+
+    expect(apiClientMock.put).not.toHaveBeenCalled();
+  });
+
+  test('Admin debe indicar el email del cliente al crear un envio', async () => {
+    apiClientMock.post.mockResolvedValue({ data: { ...sampleShipment, id: 2 } });
+
+    render(<ShipmentList />);
+    await waitFor(() => expect(screen.queryByText(/cargando envios/i)).not.toBeInTheDocument());
+
+    fireEvent.change(screen.getByLabelText('Origen'), { target: { value: 'Santiago' } });
+    fireEvent.change(screen.getByLabelText('Destino'), { target: { value: 'Temuco' } });
+    fireEvent.change(screen.getByLabelText('Peso (kg)'), { target: { value: '3' } });
+    fireEvent.change(screen.getByLabelText('Cliente'), { target: { value: 'Ana' } });
+    fireEvent.click(screen.getByRole('button', { name: /crear envio/i }));
+
+    expect(await screen.findByText(/ingresa un email valido/i)).toBeInTheDocument();
+    expect(apiClientMock.post).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText('Email del cliente'), { target: { value: 'ana@rutaexpress.cl' } });
+    fireEvent.click(screen.getByRole('button', { name: /crear envio/i }));
+
+    await waitFor(() => {
+      expect(apiClientMock.post).toHaveBeenCalledWith('/api/shipments', {
+        origen: 'Santiago',
+        destino: 'Temuco',
+        pesoKg: 3,
+        clienteNombre: 'Ana',
+        clienteEmail: 'ana@rutaexpress.cl',
+      });
+    });
+  });
+
+  test('Cliente no ve el campo email: el BFF usa el de su token', async () => {
+    useUserRoles.mockReturnValue(['Cliente']);
+    render(<ShipmentList />);
+    await waitFor(() => expect(screen.queryByText(/cargando envios/i)).not.toBeInTheDocument());
+
+    expect(screen.queryByLabelText('Email del cliente')).not.toBeInTheDocument();
+  });
+
+  test('el boton Seguimiento muestra las etapas del envio', async () => {
+    render(<ShipmentList />);
+    await waitFor(() => expect(screen.queryByText(/cargando envios/i)).not.toBeInTheDocument());
+
+    fireEvent.click(screen.getByRole('button', { name: 'Seguimiento' }));
+
+    expect(screen.getByRole('list', { name: /seguimiento del envio 1/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Ocultar seguimiento' })).toBeInTheDocument();
+  });
 });

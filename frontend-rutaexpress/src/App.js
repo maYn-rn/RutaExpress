@@ -5,7 +5,11 @@ import { loginRequest } from './authConfig';
 import ServiceList from './components/ServiceList';
 import ShipmentList from './components/ShipmentList';
 import SessionInfo from './components/SessionInfo';
+import NotificationBell from './components/NotificationBell';
+import { NotificationsProvider } from './notifications/NotificationsContext';
 import { useUserRoles } from './auth/useUserRoles';
+import { WRITE_ROLES, hasAnyRole } from './auth/roles';
+import CustomerShipments from './components/CustomerShipments';
 
 const TABS = {
   CATALOG: 'catalog',
@@ -17,6 +21,9 @@ function App() {
   const { instance, accounts } = useMsal();
   const roles = useUserRoles();
   const [activeTab, setActiveTab] = useState(TABS.CATALOG);
+  // Igual que el BFF (CustomerScope): solo Admin y Operador administran;
+  // cualquier otro usuario es un cliente y solo ve sus envios.
+  const isStaff = hasAnyRole(roles, WRITE_ROLES);
 
   const handleLogin = () => {
     instance.loginRedirect(loginRequest).catch((error) => {
@@ -60,49 +67,55 @@ function App() {
         </UnauthenticatedTemplate>
 
         <AuthenticatedTemplate>
-          <div className="App-user-bar">
-            <span>Hola, {accounts[0]?.name}</span>
-            {roles.length > 0 ? (
-              roles.map((role) => (
-                <span key={role} className="chip">
-                  {role}
-                </span>
-              ))
+          <NotificationsProvider>
+            <div className="App-user-bar">
+              <span>Hola, {accounts[0]?.name}</span>
+              {isStaff &&
+                roles.map((role) => (
+                  <span key={role} className="chip">
+                    {role}
+                  </span>
+                ))}
+              <NotificationBell />
+              <button type="button" onClick={handleLogout}>
+                Cerrar sesion
+              </button>
+            </div>
+
+            {isStaff ? (
+              <>
+                <nav className="app-tabs">
+                  <button
+                    type="button"
+                    className={activeTab === TABS.CATALOG ? 'tab active' : 'tab'}
+                    onClick={() => setActiveTab(TABS.CATALOG)}
+                  >
+                    Catalogo
+                  </button>
+                  <button
+                    type="button"
+                    className={activeTab === TABS.SHIPMENTS ? 'tab active' : 'tab'}
+                    onClick={() => setActiveTab(TABS.SHIPMENTS)}
+                  >
+                    Envios
+                  </button>
+                  <button
+                    type="button"
+                    className={activeTab === TABS.SESSION ? 'tab active' : 'tab'}
+                    onClick={() => setActiveTab(TABS.SESSION)}
+                  >
+                    Mi sesion
+                  </button>
+                </nav>
+
+                {activeTab === TABS.CATALOG && <ServiceList />}
+                {activeTab === TABS.SHIPMENTS && <ShipmentList />}
+                {activeTab === TABS.SESSION && <SessionInfo />}
+              </>
             ) : (
-              <span className="chip muted-chip">Solo lectura</span>
+              <CustomerShipments email={accounts[0]?.username} />
             )}
-            <button type="button" onClick={handleLogout}>
-              Cerrar sesion
-            </button>
-          </div>
-
-          <nav className="app-tabs">
-            <button
-              type="button"
-              className={activeTab === TABS.CATALOG ? 'tab active' : 'tab'}
-              onClick={() => setActiveTab(TABS.CATALOG)}
-            >
-              Catalogo
-            </button>
-            <button
-              type="button"
-              className={activeTab === TABS.SHIPMENTS ? 'tab active' : 'tab'}
-              onClick={() => setActiveTab(TABS.SHIPMENTS)}
-            >
-              Envios
-            </button>
-            <button
-              type="button"
-              className={activeTab === TABS.SESSION ? 'tab active' : 'tab'}
-              onClick={() => setActiveTab(TABS.SESSION)}
-            >
-              Mi sesion
-            </button>
-          </nav>
-
-          {activeTab === TABS.CATALOG && <ServiceList />}
-          {activeTab === TABS.SHIPMENTS && <ShipmentList />}
-          {activeTab === TABS.SESSION && <SessionInfo />}
+          </NotificationsProvider>
         </AuthenticatedTemplate>
       </header>
     </div>

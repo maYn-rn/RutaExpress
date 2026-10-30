@@ -1,5 +1,6 @@
 package cl.duoc.rutaexpress.shipments.dto;
 
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
@@ -32,5 +33,9 @@ public class ShipmentRequestDTO {
 
     @NotBlank(message = "El nombre del cliente es obligatorio")
     private String clienteNombre;
+
+    @NotBlank(message = "El email del cliente es obligatorio")
+    @Email(message = "El email del cliente no es valido")
+    private String clienteEmail;
 
 }

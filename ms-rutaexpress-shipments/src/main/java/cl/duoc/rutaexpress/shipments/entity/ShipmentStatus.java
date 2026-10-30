@@ -9,12 +9,15 @@ public enum ShipmentStatus {
     ACEPTADO,
     EN_TRANSITO,
     ENTREGADO,
+    /** No se pudo entregar (destinatario ausente, direccion erronea...). Admite reintento. */
+    FALLIDO,
     CANCELADO;
 
     private static final Map<ShipmentStatus, Set<ShipmentStatus>> ALLOWED_TRANSITIONS = Map.of(
             CREADO, Set.of(ACEPTADO, CANCELADO),
             ACEPTADO, Set.of(EN_TRANSITO, CANCELADO),
-            EN_TRANSITO, Set.of(ENTREGADO, CANCELADO),
+            EN_TRANSITO, Set.of(ENTREGADO, FALLIDO, CANCELADO),
+            FALLIDO, Set.of(EN_TRANSITO, CANCELADO),
             ENTREGADO, Set.of(),
             CANCELADO, Set.of()
     );

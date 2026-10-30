@@ -11,16 +11,20 @@ import java.time.LocalDateTime;
  * responde (caido, timeout, DNS). Mantiene el mismo formato JSON que
  * RestAuthenticationEntryPoint y RestAccessDeniedHandler.
  */
-final class ProxyErrors {
+public final class ProxyErrors {
 
     private ProxyErrors() {
     }
 
     static ResponseEntity<String> serviceUnavailable(String serviceName) {
+        return error(HttpStatus.SERVICE_UNAVAILABLE, "El servicio " + serviceName + " no esta disponible en este momento");
+    }
+
+    public static ResponseEntity<String> error(HttpStatus status, String message) {
         String body = """
-                {"timestamp":"%s","status":503,"error":"Service Unavailable","message":"El servicio %s no esta disponible en este momento"}"""
-                .formatted(LocalDateTime.now(), serviceName);
-        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                {"timestamp":"%s","status":%d,"error":"%s","message":"%s"}"""
+                .formatted(LocalDateTime.now(), status.value(), status.getReasonPhrase(), message);
+        return ResponseEntity.status(status)
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body);
     }

@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -27,8 +28,8 @@ public class ShipmentController {
     private final ShipmentService shipmentService;
 
     @GetMapping
-    public ResponseEntity<List<ShipmentResponseDTO>> getAll() {
-        return ResponseEntity.ok(shipmentService.findAll());
+    public ResponseEntity<List<ShipmentResponseDTO>> getAll(@RequestParam(required = false) String clienteEmail) {
+        return ResponseEntity.ok(shipmentService.findAll(clienteEmail));
     }
 
     @GetMapping("/{id}")

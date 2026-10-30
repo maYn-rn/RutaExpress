@@ -4,12 +4,15 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
  * Nombres de la mensajeria leidos desde application.yml (app.messaging.*).
- * Es el unico lugar desde donde el codigo obtiene exchange y routing keys.
+ * Es el unico lugar desde donde el codigo obtiene exchanges y routing keys.
  */
 @ConfigurationProperties(prefix = "app.messaging")
-public record MessagingProperties(String exchange, RoutingKeys routingKeys) {
+public record MessagingProperties(Exchanges exchanges, RoutingKeys routingKeys) {
 
-    public record RoutingKeys(String shipmentCreated, String shipmentStatusChanged) {
+    public record Exchanges(String direct, String topic) {
+    }
+
+    public record RoutingKeys(String emailSend, String emailStatusPrefix, String warehouseTicket, String labelGen) {
     }
 
 }

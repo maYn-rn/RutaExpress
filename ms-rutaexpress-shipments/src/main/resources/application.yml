@@ -23,10 +23,21 @@ spring:
     password: ${RABBITMQ_PASSWORD:guest}
 
 # Nombres de la mensajeria centralizados: el codigo los lee desde aqui
-# (MessagingProperties), nunca como strings sueltos.
+# (MessagingProperties), nunca como strings sueltos. Topologia:
+#   cmd.direct (direct) -> email.send | warehouse.ticket | label.gen
+#   cmd.topic  (topic)  -> email.<estado> (cola q.cmd.email via email.*)
+# Las colas q.cmd.* y sus DLQ las declara ms-rutaexpress-notifications.
 app:
   messaging:
-    exchange: rutaexpress.shipments.exchange
+    exchanges:
+      direct: cmd.direct
+      topic: cmd.topic
     routing-keys:
-      shipment-created: shipment.created
-      shipment-status-changed: shipment.status.changed
+      # Envio registrado: aviso al cliente
+      email-send: email.send
+      # Cambio de estado: se publica como "email.<estado>" (ej. email.entregado)
+      email-status-prefix: email
+      # Envio ACEPTADO: ticket de picking en bodega
+      warehouse-ticket: warehouse.ticket
+      # Envio registrado: guia de despacho / etiqueta
+      label-gen: label.gen
